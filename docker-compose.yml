@@ -1,0 +1,120 @@
+version: '3.7'
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector:0.61.0
+    restart: unless-stopped
+    command: ['--config=/etc/otel-collector.yaml']
+    volumes:
+      - ./etc/otel-collector.yaml:/etc/otel-collector.yaml
+    ports:
+      - '1888:1888' # pprof extension
+      - '8888:8888' # Prometheus metrics exposed by the collector
+      - '8889:8889' # Prometheus exporter metrics
+      - '13133:13133' # health_check extension
+      - '4317:4317' # OTLP gRPC receiver
+      - '4318:4318' # OTLP HTTP receiver
+      - '55679:55679' # zpages extension
+    depends_on:
+      - tempo
+      - prometheus
+    labels:
+      org.label-schema.group: 'monitoring'
+
+  tempo:
+    image: grafana/tempo:2.2.3
+    restart: unless-stopped
+    command: ['-config.file=/etc/tempo.yaml']
+    volumes:
+      - ./etc/tempo.yaml:/etc/tempo.yaml
+      - ./data/tempo:/tmp/tempo
+    ports:
+      - '14268' # jaeger ingest
+      - '3200' # tempo
+      - '4317' # otlp grpc
+      - '4318' # otlp http
+      - '9411' # zipkin
+    labels:
+      org.label-schema.group: 'monitoring'
+
+  loki:
+    image: grafana/loki:2.8.5
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki.yaml
+    ports:
+      - '3100:3100' # loki needs to be exposed so it receives logs
+    environment:
+      - JAEGER_AGENT_HOST=tempo
+      - JAEGER_ENDPOINT=http://tempo:14268/api/traces # send traces to Tempo
+      - JAEGER_SAMPLER_TYPE=const
+      - JAEGER_SAMPLER_PARAM=1
+    volumes:
+      - ./etc/loki.yaml:/etc/loki/loki.yaml
+      - ./data/loki:/tmp/loki
+    labels:
+      org.label-schema.group: 'monitoring'
+
+  promtail:
+    image: grafana/promtail:2.9.0
+    restart: unless-stopped
+    volumes:
+      - ./etc/promtail-config.yaml:/etc/promtail/config.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./logs:/app/logs
+    command: -config.file=/etc/promtail/config.yaml -config.expand-env=true
+    ports:
+      - '9080:9080'
+    depends_on:
+      - loki
+    labels:
+      org.label-schema.group: 'monitoring'
+
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    restart: unless-stopped
+    volumes:
+      - ./etc/prometheus.yaml:/etc/prometheus.yaml
+    command:
+      - --config.file=/etc/prometheus.yaml
+    ports:
+      - '9090:9090'
+    labels:
+      org.label-schema.group: 'monitoring'
+
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: alertmanager
+    volumes:
+      - ./etc/alertmanager.yaml:/etc/alertmanager.yaml
+      - ./data/alertmanager:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager.yaml'
+      - '--storage.path=/alertmanager'
+    restart: unless-stopped
+    expose:
+      - 9093
+    ports:
+      - "9093:9093"
+    labels:
+      org.label-schema.group: 'monitoring'
+
+  grafana:
+    image: grafana/grafana:9.2.20
+    restart: unless-stopped
+    volumes:
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./data/grafana:/var/lib/grafana
+      # - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+    environment:
+      - GF_SECURITY_ADMIN_USER=${ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD:-changepass}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - '3000:3000'
+    depends_on:
+      - prometheus
+      - tempo
+      - loki
+      - alertmanager
+    labels:
+      org.label-schema.group: 'monitoring'
