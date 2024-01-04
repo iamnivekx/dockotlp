@@ -20,13 +20,13 @@ scrape_configs:
         regex: "/(.*)"
         target_label: "container"
 
-  - job_name: srv
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: srv
-          __path__: /app/logs/*.log
-    relabel_configs:
-      - source_labels: ["__path__"]
-        target_label: "path"
+  # - job_name: srv
+  #   static_configs:
+  #     - targets:
+  #         - localhost
+  #       labels:
+  #         job: srv
+  #         __path__: /app/logs/*.log
+  #   relabel_configs:
+  #     - source_labels: ["__path__"]
+  #       target_label: "path"

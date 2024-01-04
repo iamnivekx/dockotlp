@@ -1,7 +1,7 @@
 version: '3.7'
 services:
   otel-collector:
-    image: otel/opentelemetry-collector:0.61.0
+    image: otel/opentelemetry-collector:0.86.0
     restart: unless-stopped
     command: ['--config=/etc/otel-collector.yaml']
     volumes:
@@ -21,7 +21,7 @@ services:
       org.label-schema.group: 'monitoring'
 
   tempo:
-    image: grafana/tempo:2.2.3
+    image: grafana/tempo:2.3.1
     restart: unless-stopped
     command: ['-config.file=/etc/tempo.yaml']
     volumes:
@@ -37,11 +37,13 @@ services:
       org.label-schema.group: 'monitoring'
 
   loki:
-    image: grafana/loki:2.8.5
+    image: grafana/loki:2.9.2
     restart: unless-stopped
     command: -config.file=/etc/loki/loki.yaml
     ports:
       - '3100:3100' # loki needs to be exposed so it receives logs
+      # - 7946
+      # - 9095
     environment:
       - JAEGER_AGENT_HOST=tempo
       - JAEGER_ENDPOINT=http://tempo:14268/api/traces # send traces to Tempo
@@ -54,12 +56,11 @@ services:
       org.label-schema.group: 'monitoring'
 
   promtail:
-    image: grafana/promtail:2.9.0
+    image: grafana/promtail:2.9.2
     restart: unless-stopped
     volumes:
       - ./etc/promtail-config.yaml:/etc/promtail/config.yaml:ro
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./logs:/app/logs
     command: -config.file=/etc/promtail/config.yaml -config.expand-env=true
     ports:
       - '9080:9080'
@@ -98,12 +99,12 @@ services:
       org.label-schema.group: 'monitoring'
 
   grafana:
-    image: grafana/grafana:9.2.20
+    image: grafana/grafana:10.2.2
     restart: unless-stopped
     volumes:
+      - ./data/grafana:/var/lib/grafana
       - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
-      - ./data/grafana:/var/lib/grafana
       # - ./grafana/grafana.ini:/etc/grafana/grafana.ini
     environment:
       - GF_SECURITY_ADMIN_USER=${ADMIN_USER:-admin}
