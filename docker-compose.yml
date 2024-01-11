@@ -107,9 +107,10 @@ services:
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
       # - ./grafana/grafana.ini:/etc/grafana/grafana.ini
     environment:
-      - GF_SECURITY_ADMIN_USER=${ADMIN_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD:-changepass}
-      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=${GF_SERVER_ROOT_URL} # your domain url
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-changepass}
+      - GF_USERS_ALLOW_SIGN_UP=${GF_USERS_ALLOW_SIGN_UP:-false}
     ports:
       - '3000:3000'
     depends_on:
