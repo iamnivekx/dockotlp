@@ -94,7 +94,7 @@ services:
     expose:
       - 9093
     ports:
-      - "9093:9093"
+      - '9093:9093'
     labels:
       org.label-schema.group: 'monitoring'
 
