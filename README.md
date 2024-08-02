@@ -1,6 +1,6 @@
 # dockotlp
 
-A monitoring and `Otel` solution
+A `monitoring` and `Otel` solution for Docker hosts and containers with Prometheus, Grafana, Loki, Promtail, Tempo and alerting with AlertManager.
 
 - [Grafana](https://grafana.com/docs/grafana/latest/)
 - [Prometheus](https://prometheus.io/)
