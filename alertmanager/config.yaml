@@ -1,0 +1,21 @@
+# https://github.com/prometheus/alertmanager/blob/main/doc/examples/simple.yml
+global:
+  resolve_timeout: 5m
+
+  # smtp config
+  # smtp_from: ""
+  # smtp_smarthost: ""
+  # smtp_auth_username: ""
+  # smtp_auth_password: ""
+  # smtp_require_tls: true
+# route:
+#   receiver: 'slack'
+
+# receivers:
+#   - name: 'slack'
+#     slack_configs:
+#       - send_resolved: true
+#         text: '{{ .CommonAnnotations.description }}'
+#         username: 'Prometheus'
+#         channel: '#<channel-name>'
+#         api_url: 'https://hooks.slack.com/services/<webhook-id>'
