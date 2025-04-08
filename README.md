@@ -11,10 +11,16 @@ A `monitoring` and `Otel` solution for Docker hosts and containers with Promethe
 
 ## Install
 
+```bash
+mkdir -p data/{grafana,loki,prometheus,tempo}
+```
+
+```bash
+
 Clone this repository and run compose up:
 
 ```bash
-git clone https://github.com/peng-huang-ch/dockotlp.git
+git clone https://github.com/iamnivekx/dockotlp.git
 cd dockotlp
 cp .env.sample .env
 

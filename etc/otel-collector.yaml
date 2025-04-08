@@ -2,14 +2,19 @@ receivers:
   otlp:
     protocols:
       grpc:
+        endpoint: 0.0.0.0:4317
       http:
-        cors:
-          allowed_origins:
-            - http://*
-            - https://*
+        endpoint: 0.0.0.0:4318
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 100
+
 exporters:
-  otlp:
+  otlp/grafana:
     endpoint: tempo:4317
+  otlp:
+    endpoint: loki:3100
     tls:
       insecure: true
 
@@ -17,4 +22,16 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/grafana]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
       exporters: [otlp]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp]
+  telemetry:
+    logs:
+      level: 'debug'

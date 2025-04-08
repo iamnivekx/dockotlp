@@ -1,6 +1,6 @@
 services:
   otel-collector:
-    image: otel/opentelemetry-collector:0.86.0
+    image: otel/opentelemetry-collector:latest
     restart: unless-stopped
     command: ['--config=/etc/otel-collector.yaml']
     volumes:
@@ -20,7 +20,7 @@ services:
       org.label-schema.group: 'monitoring'
 
   tempo:
-    image: grafana/tempo:2.3.1
+    image: grafana/tempo:latest
     restart: unless-stopped
     command: ['-config.file=/etc/tempo.yaml']
     volumes:
@@ -35,10 +35,18 @@ services:
     labels:
       org.label-schema.group: 'monitoring'
 
-  loki:
-    image: grafana/loki:2.9.2
+  k6-tracing:
+    image: ghcr.io/grafana/xk6-client-tracing:v0.0.7
+    environment:
+      - ENDPOINT=otel-collector:4317
     restart: unless-stopped
-    command: -config.file=/etc/loki/loki.yaml
+    depends_on:
+      - otel-collector
+
+  loki:
+    image: grafana/loki:latest
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki.yaml -config.expand-env=true
     ports:
       - '3100:3100' # loki needs to be exposed so it receives logs
       # - 7946
@@ -55,7 +63,7 @@ services:
       org.label-schema.group: 'monitoring'
 
   promtail:
-    image: grafana/promtail:2.9.2
+    image: grafana/promtail:3.4
     restart: unless-stopped
     volumes:
       - ./etc/promtail-config.yaml:/etc/promtail/config.yaml:ro
@@ -69,7 +77,7 @@ services:
       org.label-schema.group: 'monitoring'
 
   prometheus:
-    image: prom/prometheus:v2.48.0
+    image: prom/prometheus:v3.1.0
     restart: unless-stopped
     volumes:
       - ./etc/prometheus.yaml:/etc/prometheus.yaml
@@ -81,7 +89,7 @@ services:
       org.label-schema.group: 'monitoring'
 
   alertmanager:
-    image: prom/alertmanager:v0.26.0
+    image: prom/alertmanager:v0.28.1
     container_name: alertmanager
     volumes:
       - ./etc/alertmanager.yaml:/etc/alertmanager.yaml
@@ -98,7 +106,7 @@ services:
       org.label-schema.group: 'monitoring'
 
   grafana:
-    image: grafana/grafana:10.2.2
+    image: grafana/grafana:11.5.1
     restart: unless-stopped
     volumes:
       - ./data/grafana:/var/lib/grafana
