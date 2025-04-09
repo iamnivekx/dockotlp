@@ -1,0 +1,211 @@
+networks:
+  monitor-net:
+    driver: bridge
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    container_name: prometheus
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - ./data/prometheus:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yaml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    expose:
+      - 9090
+    networks:
+      - monitor-net
+    labels:
+      org.label-schema.group: 'monitoring'
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    container_name: alertmanager
+    volumes:
+      - ./alertmanager:/etc/alertmanager
+      - ./data/alertmanager:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/config.yaml'
+      - '--storage.path=/alertmanager'
+    restart: unless-stopped
+    expose:
+      - 9093
+    networks:
+      - monitor-net
+    labels:
+      org.label-schema.group: 'monitoring'
+
+  nodeexporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: nodeexporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    restart: unless-stopped
+    expose:
+      - 9100
+    networks:
+      - monitor-net
+    labels:
+      org.label-schema.group: 'monitoring'
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.51.0
+    container_name: cadvisor
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      #- /cgroup:/cgroup:ro #doesn't work on MacOS only for Linux
+    command:
+      - '-housekeeping_interval=10s'
+      - '-docker_only=true'
+      - '--store_container_labels=false'
+    restart: unless-stopped
+    expose:
+      - 8080
+    networks:
+      - monitor-net
+    labels:
+      org.label-schema.group: 'monitoring'
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    container_name: grafana
+    volumes:
+      - ./data/grafana:/var/lib/grafana
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+    environment:
+      - GF_SERVER_ROOT_URL=${GF_SERVER_ROOT_URL} # your domain url
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-changepass}
+      - GF_USERS_ALLOW_SIGN_UP=${GF_USERS_ALLOW_SIGN_UP:-false}
+    restart: unless-stopped
+    expose:
+      - 3000
+    ports:
+      - '3000:3000'
+    networks:
+      - monitor-net
+    labels:
+      org.label-schema.group: 'monitoring'
+
+  pushgateway:
+    image: prom/pushgateway:v1.11.0
+    container_name: pushgateway
+    restart: unless-stopped
+    expose:
+      - 9091
+    networks:
+      - monitor-net
+    labels:
+      org.label-schema.group: 'monitoring'
+
+  otel-collector:
+    image: otel/opentelemetry-collector:0.123.0
+    container_name: otel-collector
+    restart: unless-stopped
+    command: ['--config=/etc/otel-collector.yaml']
+    volumes:
+      - ./otel/otel-collector.yaml:/etc/otel-collector.yaml
+    ports:
+      - '1888:1888' # pprof extension
+      - '8888:8888' # Prometheus metrics exposed by the collector
+      - '8889:8889' # Prometheus exporter metrics
+      - '13133:13133' # health_check extension
+      - '4317:4317' # OTLP gRPC receiver
+      - '4318:4318' # OTLP HTTP receiver
+      - '55679:55679' # zpages extension
+    depends_on:
+      - tempo
+      - loki
+    networks:
+      - monitor-net
+    labels:
+      org.label-schema.group: 'monitoring'
+
+  alloy:
+    image: grafana/alloy:v1.6.1
+    container_name: alloy
+    volumes:
+      - './alloy/config.alloy:/etc/alloy/config.alloy'
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: ['run', '--server.http.listen-addr=0.0.0.0:12345', '--stability.level=public-preview', '/etc/alloy/config.alloy']
+    restart: unless-stopped
+    expose:
+      - 12345
+    environment:
+      - LOKI_HOST=loki:3100
+    depends_on:
+      - otel-collector
+      - loki
+    networks:
+      - monitor-net
+    labels:
+      org.label-schema.group: 'monitoring'
+
+  tempo:
+    image: grafana/tempo:latest
+    container_name: tempo
+    restart: unless-stopped
+    command: ['-config.file=/etc/tempo.yaml']
+    volumes:
+      - ./tempo/tempo.yaml:/etc/tempo.yaml
+      - ./data/tempo:/var/tempo
+    expose:
+      - 14268
+      - 3200
+      - 4317
+      - 4318
+      - 9411
+    ports:
+      - '14268' # jaeger ingest
+      - '3200' # tempo
+      - '4317' # otlp grpc
+      - '4318' # otlp http
+      - '9411' # zipkin
+    networks:
+      - monitor-net
+    labels:
+      org.label-schema.group: 'monitoring'
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki.yaml -config.expand-env=true
+    expose:
+      - 3100
+    ports:
+      - '3100:3100' # loki needs to be exposed so it receives logs
+    environment:
+      - JAEGER_AGENT_HOST=tempo
+      - JAEGER_ENDPOINT=http://tempo:14268/api/traces # send traces to Tempo
+      - JAEGER_SAMPLER_TYPE=const
+      - JAEGER_SAMPLER_PARAM=1
+    volumes:
+      - ./loki/loki.yaml:/etc/loki/loki.yaml
+      - ./data/loki:/tmp/loki
+    networks:
+      - monitor-net
+    labels:
+      org.label-schema.group: 'monitoring'
