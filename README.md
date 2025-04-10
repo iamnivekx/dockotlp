@@ -12,8 +12,9 @@ DockOTLP provides a complete observability stack for Docker hosts and containers
 - **Prometheus**: Time-series database for metrics
 - **AlertManager**: Alert management and notification system
 - **Loki**: Log aggregation system
-- **Alloy**: Modern observability pipeline
 - **Tempo**: Distributed tracing backend
+- **Alloy**: Modern observability pipeline
+- **Cadvisor**: Container resource usage and performance monitoring
 
 ## Prerequisites
 
