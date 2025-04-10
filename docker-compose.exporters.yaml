@@ -15,6 +15,8 @@ services:
     network_mode: host
     labels:
       org.label-schema.group: 'monitoring'
+      source: 'docker'
+      tag: 'moon'
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.51.0
@@ -28,10 +30,17 @@ services:
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
       - /cgroup:/cgroup:ro
+    command:
+      - '-housekeeping_interval=10s'
+      - '-docker_only=true'
+      - '--store_container_labels=false'
+    # https://github.com/stefanprodan/dockprom/pull/288/
     restart: unless-stopped
     network_mode: host
     labels:
       org.label-schema.group: 'monitoring'
+      source: 'docker'
+      tag: 'moon'
 
   alloy:
     image: grafana/alloy:v1.7.5
@@ -47,3 +56,5 @@ services:
     network_mode: host
     labels:
       org.label-schema.group: 'monitoring'
+      source: 'docker'
+      tag: 'moon'
