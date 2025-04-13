@@ -58,6 +58,8 @@ metrics_generator:
       cluster: docker-compose
   storage:
     path: /var/tempo/generator/wal
+    remote_write_flush_deadline: 1m
+    remote_write_add_org_id_header: true
     remote_write:
       - url: http://prometheus:9090/api/v1/write
         send_exemplars: true
