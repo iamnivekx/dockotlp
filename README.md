@@ -13,8 +13,11 @@ DockOTLP provides a complete observability stack for Docker hosts and containers
 - **AlertManager**: Alert management and notification system
 - **Loki**: Log aggregation system
 - **Tempo**: Distributed tracing backend
-- **Alloy**: Modern observability pipeline
+- **Alloy**: Modern observability pipeline for logs and metrics collection
 - **Cadvisor**: Container resource usage and performance monitoring
+- **Node Exporter**: Host system metrics collection
+- **PushGateway**: Metrics gateway for short-lived jobs
+- **OpenTelemetry Collector**: Unified telemetry data collection and processing
 
 ## Prerequisites
 
@@ -56,13 +59,20 @@ docker-compose up -d
 
 ## Service Endpoints
 
-- OpenTelemetry Collector: `http://<host-ip>:4317`
-- Prometheus: `http://<host-ip>:9090`
-- AlertManager: `http://<host-ip>:9093`
-- Grafana: `http://<host-ip>:3000`
-- Loki: `http://<host-ip>:3100`
-- Promtail: `http://<host-ip>:9080`
-- Tempo: `http://<host-ip>:3200`
+- **Grafana**: `http://<host-ip>:3000`
+- **Prometheus**: `http://<host-ip>:9090`
+- **AlertManager**: `http://<host-ip>:9093`
+- **Loki**: `http://<host-ip>:3100`
+- **Tempo**: `http://<host-ip>:3200`
+- **OpenTelemetry Collector**:
+  - OTLP gRPC: `http://<host-ip>:4317`
+  - OTLP HTTP: `http://<host-ip>:4318`
+  - Health Check: `http://<host-ip>:13133`
+  - Metrics: `http://<host-ip>:8888`
+- **Alloy**: `http://<host-ip>:12345`
+- **Node Exporter**: `http://<host-ip>:9100`
+- **PushGateway**: `http://<host-ip>:9091`
+- **cAdvisor**: `http://<host-ip>:8080`
 
 ## Configuration
 
@@ -93,6 +103,53 @@ Loki settings can be configured in `loki/loki.yaml`. For detailed configuration 
 ### Tempo Configuration
 
 Tempo settings can be configured in `tempo/tempo.yaml`. For detailed configuration options, refer to the [official documentation](https://grafana.com/docs/tempo/latest/configuration/manifest/).
+
+### OpenTelemetry Collector Configuration
+
+OpenTelemetry Collector is the central component for receiving, processing, and exporting telemetry data. It supports multiple protocols and formats.
+
+**Key features:**
+- **OTLP Protocol**: Native OpenTelemetry protocol support
+- **Multiple Receivers**: gRPC, HTTP, Jaeger, Zipkin
+- **Data Processing**: Filtering, transformation, and routing
+- **Multiple Exporters**: Prometheus, Loki, Tempo, and more
+
+Configuration is managed in `otel/otel-collector.yaml`. The collector is configured to:
+- Receive OTLP data on ports 4317 (gRPC) and 4318 (HTTP)
+- Export metrics to Prometheus
+- Export logs to Loki
+- Export traces to Tempo
+
+### Alloy Configuration
+
+Alloy is a modern observability pipeline that replaces Promtail for log collection. It provides:
+- **Docker Log Collection**: Automatic container log discovery
+- **Log Processing**: Parsing, filtering, and transformation
+- **Multiple Outputs**: Loki, Prometheus, and other backends
+
+Configuration is managed in `alloy/config.alloy`. Key features:
+- Automatic Docker container log discovery
+- Log parsing and enrichment
+- Metrics extraction from logs
+- Flexible routing and filtering
+
+### Node Exporter
+
+Node Exporter collects host system metrics including:
+- CPU, memory, and disk usage
+- Network statistics
+- File system metrics
+- System load and processes
+
+The exporter runs with host network access to collect system-level metrics and is automatically discovered by Prometheus.
+
+### PushGateway
+
+PushGateway is used for metrics from short-lived jobs that cannot be scraped by Prometheus. It:
+- Accepts metrics via HTTP POST requests
+- Stores metrics until they are scraped by Prometheus
+- Supports batch job monitoring
+- Provides a bridge for ephemeral services
 
 ### AlertManager Setup
 
