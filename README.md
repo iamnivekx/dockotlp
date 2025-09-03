@@ -28,10 +28,16 @@ DockOTLP provides a complete observability stack for Docker hosts and containers
 mkdir -p data/{alertmanager,alloy,grafana,loki,prometheus,tempo}
 ```
 
+Maybe you need to change the owner of the data directories:
+```bash
+chown -R 1000:1000 data
+```
+
 2. Clone the repository and set up the environment:
 ```bash
 git clone https://github.com/iamnivekx/dockotlp.git
 cd dockotlp
+cp grafana/grafana.ini.sample grafana/grafana.ini
 cp .env.sample .env
 ```
 
